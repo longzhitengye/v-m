@@ -18,11 +18,11 @@ def main():
         text_path=str(GEN_TEXT),
         output_path=str(EFFECTED_TEXT),
         ink_color="#000000",
-        edge_diffusion=3,
-        stroke_variation=0.28,
-        feather_amount=0.18,
+        edge_diffusion=5,
+        stroke_variation=0.35,
+        feather_amount=0.25,
         adapt_lighting=True,
-        lighting_strength=0.25,
+        lighting_strength=0.4,
     )
     preview_ink_on_frame(
         frame_path=str(ORIGINAL_FRAME),

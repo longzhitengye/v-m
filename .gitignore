@@ -16,9 +16,6 @@ venv/
 # OS
 .DS_Store
 
-# Data
-data/*.png
-data/*.jpg
 
 # Generated
 dist/

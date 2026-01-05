@@ -205,37 +205,57 @@ def generate_ink_layer(
         lf = (1.0 - (1.0 - lighting01) * lighting_strength).astype(np.float32)
         ink_amount01 = np.clip(ink_amount01 * lf, 0.0, 1.0).astype(np.float32)
 
-    bg = np.full((h, w, 3), 255, dtype=np.uint8)
-    ink = np.zeros_like(bg, dtype=np.uint8)
-    ink[:, :] = ink_bgr
+    # 获取纸张对应区域的颜色作为基底
+    paper_resized = cv2.resize(paper, (w, h), interpolation=cv2.INTER_LINEAR)
+    paper_f = paper_resized.astype(np.float32)
 
-    a3 = np.repeat(ink_amount01[:, :, None], 3, axis=2).astype(np.float32)
-    out_f = bg.astype(np.float32) * (1.0 - a3) + ink.astype(np.float32) * a3
+    # 用"乘法混合": 墨迹越深，纸张颜色被墨色影响越大
+    # ink_amount=0: 原始纸张, ink_amount=1: 墨色
+    ink_f = np.array(ink_bgr, dtype=np.float32)
+
+    # 混合: result = paper * (1-ink_amount*0.85) + ink * (ink_amount*0.9)
+    # 0.85和0.9是调整系数，让纸张纹理能透出来
+    ink_strength = ink_amount01 * 0.92
+    a3 = np.repeat(ink_strength[:, :, None], 3, axis=2).astype(np.float32)
+
+    out_f = paper_f * (1.0 - a3) + ink_f * a3
     out = np.clip(out_f, 0.0, 255.0).astype(np.uint8)
 
+    # 输出 RGBA: alpha 用 ink_amount
+    alpha = (ink_amount01 * 255).astype(np.uint8)
+    bgra = np.dstack((out, alpha)).astype(np.uint8)
+
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(output_path, out)
-    return out
+    cv2.imwrite(output_path, bgra)
+    return bgra
 
 
 def preview_ink_on_frame(*, frame_path: str, ink_path: str, output_path: str) -> np.ndarray:
     frame = cv2.imread(frame_path, cv2.IMREAD_COLOR)
-    ink = cv2.imread(ink_path, cv2.IMREAD_COLOR)
+    ink = cv2.imread(ink_path, cv2.IMREAD_UNCHANGED)  # 读取 BGRA
     assert frame is not None, f"无法读取 frame: {frame_path}"
     assert ink is not None, f"无法读取 ink: {ink_path}"
-    assert frame.shape == ink.shape, "frame 与 ink 尺寸不一致"
 
-    # 计算墨迹的 alpha: 越接近白色越透明
-    # 用 255 - 亮度作为 alpha 值
-    ink_gray = cv2.cvtColor(ink, cv2.COLOR_BGR2GRAY).astype(np.float32)
-    alpha = (255.0 - ink_gray) / 255.0  # 白色=0透明, 黑色=1不透明
-    alpha = np.clip(alpha, 0.0, 1.0)
+    # 如果 ink 是 BGRA，使用 alpha 通道
+    if ink.shape[2] == 4:
+        alpha = ink[:, :, 3:4].astype(np.float32) / 255.0
+        ink_bgr = ink[:, :, :3]
 
-    # alpha 混合: out = frame * (1-alpha) + ink * alpha
-    frame_f = frame.astype(np.float32)
-    ink_f = ink.astype(np.float32)
-    out_f = frame_f * (1.0 - alpha[:, :, None]) + ink_f * alpha[:, :, None]
-    out = np.clip(out_f, 0, 255).astype(np.uint8)
+        # alpha 混合: out = frame * (1-alpha) + ink * alpha
+        frame_f = frame.astype(np.float32)
+        ink_f = ink_bgr.astype(np.float32)
+        out_f = frame_f * (1.0 - alpha) + ink_f * alpha
+        out = np.clip(out_f, 0, 255).astype(np.uint8)
+    else:
+        # 兼容旧版 RGB
+        ink_gray = cv2.cvtColor(ink, cv2.COLOR_BGR2GRAY).astype(np.float32)
+        alpha = (255.0 - ink_gray) / 255.0
+        alpha = np.clip(alpha, 0.0, 1.0)
+
+        frame_f = frame.astype(np.float32)
+        ink_f = ink.astype(np.float32)
+        out_f = frame_f * (1.0 - alpha[:, :, None]) + ink_f * alpha[:, :, None]
+        out = np.clip(out_f, 0, 255).astype(np.uint8)
 
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     cv2.imwrite(output_path, out)
