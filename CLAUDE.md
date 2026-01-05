@@ -4,6 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
+得到一个能根据提供的材料和基础文字图片生成像是写在纸上的字体特效的算法.
 生成毛笔书法效果的程序。流程：
 
 1. **`composite_text_to_image`** - 使用 `handright` 生成基础手写文字
