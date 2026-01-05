@@ -205,23 +205,34 @@ def generate_ink_layer(
         lf = (1.0 - (1.0 - lighting01) * lighting_strength).astype(np.float32)
         ink_amount01 = np.clip(ink_amount01 * lf, 0.0, 1.0).astype(np.float32)
 
-    # 获取纸张对应区域的颜色作为基底
+    # 获取纸张对应区域
     paper_resized = cv2.resize(paper, (w, h), interpolation=cv2.INTER_LINEAR)
-    paper_f = paper_resized.astype(np.float32)
 
-    # 用"乘法混合": 墨迹越深，纸张颜色被墨色影响越大
-    # ink_amount=0: 原始纸张, ink_amount=1: 墨色
-    ink_f = np.array(ink_bgr, dtype=np.float32)
+    # === 乘法混合 (multiply blend) ===
+    # 墨水是让纸张变暗，而不是覆盖纸张
+    # 将墨色归一化到 [0,1]
+    ink_norm = np.array(ink_bgr, dtype=np.float32) / 255.0
 
-    # 混合: result = paper * (1-ink_amount*0.85) + ink * (ink_amount*0.9)
-    # 0.85和0.9是调整系数，让纸张纹理能透出来
-    ink_strength = ink_amount01 * 0.92
-    a3 = np.repeat(ink_strength[:, :, None], 3, axis=2).astype(np.float32)
+    # 基础墨量：纹理深处墨更多
+    base_ink = ink_amount01 * (0.7 + texture01 * 0.3)
 
-    out_f = paper_f * (1.0 - a3) + ink_f * a3
-    out = np.clip(out_f, 0.0, 255.0).astype(np.uint8)
+    # 添加干笔效果 - 笔画内不均匀
+    dry_brush = generate_perlin_like_noise((h, w), scale=40)
+    base_ink = base_ink * (0.85 + dry_brush * 0.3)
+    base_ink = np.clip(base_ink, 0.0, 1.0)
 
-    # 输出 RGBA: alpha 用 ink_amount
+    # 乘法混合: result = paper * (1 - ink * (1 - ink_color))
+    # 墨色越深，纸张被压暗越多
+    paper_f = paper_resized.astype(np.float32) / 255.0
+
+    # 计算每个通道的暗化系数
+    darken = 1.0 - base_ink[:, :, None] * (1.0 - ink_norm)
+
+    # 应用乘法混合
+    out_f = paper_f * darken
+    out = np.clip(out_f * 255.0, 0.0, 255.0).astype(np.uint8)
+
+    # alpha 用原始 ink_amount
     alpha = (ink_amount01 * 255).astype(np.uint8)
     bgra = np.dstack((out, alpha)).astype(np.uint8)
 
