@@ -1,0 +1,92 @@
+[project]
+name = "v-m"
+version = "0.1.0"
+description = ""
+authors = [{ name = "longzhitengye", email = "longzhitengye@hotmial.com" }]
+readme = "README.md"
+requires-python = "<3.15,>=3.12"
+dependencies = ["pyyaml (>=6.0.3,<7.0.0)"]
+
+[tool.poetry]
+packages = [
+	{ include = "v_m", from = "src" },
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+main = ["handright (>=8.2.0,<9.0.0)", "opencv-python (>=4.12.0.88,<5.0.0.0)"]
+dev = [
+	"ruff (>=0.14.9,<0.15.0)",
+	"isort (>=7.0.0,<8.0.0)",
+	"black (>=25.12.0,<26.0.0)",
+	"pre-commit (>=4.5.0,<5.0.0)",
+	"pytest-mock (>=3.15.1,<4.0.0)",
+	"pyright (>=1.1.407,<2.0.0)",
+]
+[tool.poetry.scripts]
+dev = "v_m.main:main"
+
+
+[[tool.poetry.source]]
+name = "aliyun"
+url = "https://mirrors.aliyun.com/pypi/simple/"
+priority = "primary"
+
+
+[tool.black]
+# 行长度
+line-length = 120
+# 目标 Python 版本
+target-version = ['py38', 'py39', 'py310']
+# 要包含的文件/目录
+include = '\.pyi?$'
+# 要排除的文件/目录
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | venv
+  | migrations
+)/
+'''
+# 快速模式（不为特殊场景做额外处理）
+fast = true
+# 预览模式（使用尚未稳定的功能）
+# preview = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+fix = true
+
+# 可选：指定哪些目录或文件包含/排除（如 tests/ migrations/）
+# include = ["src"]
+# src layout
+include = ["src/**/*.py"]
+exclude = [".git", ".venv", "__pycache__", "build", "dist", "src/tools/ui"]
+[tool.ruff.lint]
+# 启用哪些规则集（select）,支持多种 linters 的规则组合
+# E,F = flake8 核心规则,I = isort,UP = pyupgrade,RUF = ruff自定义
+select = ["E", "F", "I", "UP", "RUF"]
+
+# 忽略的规则（可选）
+ignore = ["E501", "RUF003", "RUF001", "RUF002"] # 忽略行太长
+
+[tool.ruff.format]
+quote-style = "double"       # 或 "single"
+docstring-code-format = true
+
+[tool.isort]
+profile = "black"
+line_length = 120
